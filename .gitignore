@@ -1,0 +1,12 @@
+# Compilados de Java
+bin/
+*.class
+
+# Configuraciones de editores e IDEs
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
