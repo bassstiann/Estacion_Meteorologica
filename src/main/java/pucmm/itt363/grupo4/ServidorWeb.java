@@ -9,6 +9,32 @@ import java.util.List;
 @RestController
 public class ServidorWeb {
 
+    @GetMapping("/api/lecturas")
+    public List<String[]> apiLecturas(
+            @RequestParam(value = "sensor", defaultValue = "temperatura") String sensor,
+            @RequestParam(value = "cursor", required = false) Integer cursor,
+            @RequestParam(value = "dir", defaultValue = "next") String dir) {
+
+        String dbSensorId;
+        if (sensor.equals("viento")) {
+            dbSensorId = "velocidad-viento";
+        } else {
+            dbSensorId = sensor;
+        }
+
+        int pageSize = 15;
+        List<String[]> lecturas = BaseDeDatos.obtenerLecturasPaginadasPorSensor(dbSensorId, cursor, dir, pageSize + 1);
+
+        if (lecturas.size() > pageSize) {
+            if (cursor == null || dir.equals("next")) {
+                lecturas.remove(lecturas.size() - 1);
+            } else {
+                lecturas.remove(0);
+            }
+        }
+        return lecturas;
+    }
+
     @GetMapping("/")
     public String home(
             @RequestParam(value = "sensor", defaultValue = "temperatura") String sensor,
@@ -68,7 +94,7 @@ public class ServidorWeb {
 
         html.append("<div class='top-bar'>");
         html.append("<h1>Estación Meteorológica - Grupo 4</h1>");
-        html.append("<button class='btn' onclick='window.location.reload()'>Actualizar</button>");
+        html.append("<button class='btn' onclick='refrescarTabla()'>Actualizar</button>");
         html.append("</div>");
 
         html.append("<div class='tab-menu'>");
@@ -153,6 +179,36 @@ public class ServidorWeb {
         html.append("        var lastId = lastRow.cells[0].innerText;");
         html.append("        window.location.href = '/?sensor=' + sensorActivo + '&cursor=' + lastId + '&dir=next&page=' + (paginaActual + 1);");
         html.append("    }");
+        html.append("}");
+
+        html.append("function refrescarTabla() {");
+        html.append("    var params = new URLSearchParams(window.location.search);");
+        html.append("    var cursor = params.get('cursor') || '';");
+        html.append("    var dir = params.get('dir') || 'next';");
+        html.append("    var fetchUrl = '/api/lecturas?sensor=' + sensorActivo;");
+        html.append("    if (cursor) {");
+        html.append("        fetchUrl += '&cursor=' + cursor + '&dir=' + dir;");
+        html.append("    }");
+        html.append("    fetch(fetchUrl)");
+        html.append("        .then(function(res) { return res.json(); })");
+        html.append("        .then(function(data) {");
+        html.append("            var tbody = document.getElementById('tabla-cuerpo');");
+        html.append("            tbody.innerHTML = '';");
+        html.append("            if (data.length === 0) {");
+        html.append("                tbody.innerHTML = '<tr id=\"sin-datos\"><td colspan=\"5\" style=\"text-align: center;\">No hay datos registrados en esta pestaña.</td></tr>';");
+        html.append("            } else {");
+        html.append("                for (var i = 0; i < data.length; i++) {");
+        html.append("                    var fila = data[i];");
+        html.append("                    var row = tbody.insertRow();");
+        html.append("                    row.insertCell(0).innerText = fila[0];");
+        html.append("                    row.insertCell(1).innerText = fila[1];");
+        html.append("                    row.insertCell(2).innerText = fila[2];");
+        html.append("                    row.insertCell(3).innerText = fila[3];");
+        html.append("                    row.insertCell(4).innerText = fila[4];");
+        html.append("                }");
+        html.append("            }");
+        html.append("        })");
+        html.append("        .catch(function(err) { console.error(err); });");
         html.append("}");
 
         html.append("var socket = new WebSocket('ws://' + window.location.host + '/ws');");

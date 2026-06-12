@@ -10,3 +10,7 @@ bin/
 *.njsproj
 *.sln
 *.swp
+
+# Carpetas generadas en ejecución
+grupo4-publicador-*/
+grupo4-suscriptor-*/
