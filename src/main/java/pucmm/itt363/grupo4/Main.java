@@ -2,7 +2,7 @@ package pucmm.itt363.grupo4;
 
 public class Main {
 
-    public static String broker = "tcp://mqtt.eict.ce.pucmm.edu.do:1883";
+    public static String broker = "tcp://localhost:1883";
     public static String usuario = "itt363-grupo4";
     public static String password = "Kshq8UuveRLC";
 
