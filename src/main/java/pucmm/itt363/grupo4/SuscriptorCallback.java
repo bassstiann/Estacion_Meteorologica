@@ -21,20 +21,25 @@ public class SuscriptorCallback implements MqttCallback {
         System.out.println("Mensaje Recibido: " + texto);
 
         try {
-            // Dividir el tópico para extraer estacionId y sensorNombre
-            // Formato esperado: /itt363-grupo4/estacion/{estacionId}/sensores/{nombre}
             String[] parts = topic.split("/");
             if (parts.length >= 6 && parts[2].equals("estacion") && parts[4].equals("sensores")) {
                 String estacionId = parts[3];
                 String sensorNombre = parts[5];
 
-                // Parsear JSON
                 JsonObject jsonObject = JsonParser.parseString(texto).getAsJsonObject();
                 double valor = jsonObject.get("valor").getAsDouble();
                 String fecha = jsonObject.get("fecha").getAsString();
 
-                // Persistir en base de datos
-                BaseDeDatos.guardarLectura(estacionId, sensorNombre, valor, fecha);
+                long id = BaseDeDatos.guardarLectura(estacionId, sensorNombre, valor, fecha);
+                if (id > 0) {
+                    JsonObject wsMsg = new JsonObject();
+                    wsMsg.addProperty("id", id);
+                    wsMsg.addProperty("fecha", fecha);
+                    wsMsg.addProperty("nombreSensor", FormateadorLectura.obtenerNombreSensor(sensorNombre, estacionId));
+                    wsMsg.addProperty("valorConUnidad", FormateadorLectura.obtenerValorConUnidad(valor, sensorNombre));
+                    wsMsg.addProperty("descripcion", FormateadorLectura.obtenerDescripcion(valor, sensorNombre));
+                    WebSocketServidor.enviarATodos(wsMsg.toString());
+                }
             } else {
                 System.out.println("El tópico no cumple con el formato esperado. No se persistió.");
             }

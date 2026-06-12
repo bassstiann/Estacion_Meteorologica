@@ -91,7 +91,8 @@ public class BaseDeDatos {
         return existe;
     }
 
-    public static void guardarLectura(String idEstacion, String idSensor, double valor, String fechaTexto) {
+    public static long guardarLectura(String idEstacion, String idSensor, double valor, String fechaTexto) {
+        long idGenerado = -1;
         try {
             Connection con = getConnection();
 
@@ -115,7 +116,7 @@ public class BaseDeDatos {
             }
 
             String insertLect = "INSERT INTO lectura (estacion_id, sensor_id, valor, fecha) VALUES (?, ?, ?, ?)";
-            PreparedStatement psLect = con.prepareStatement(insertLect);
+            PreparedStatement psLect = con.prepareStatement(insertLect, Statement.RETURN_GENERATED_KEYS);
             psLect.setString(1, idEstacion);
             psLect.setString(2, idSensor);
             psLect.setDouble(3, valor);
@@ -126,6 +127,11 @@ public class BaseDeDatos {
             psLect.setTimestamp(4, fechaSql);
 
             psLect.executeUpdate();
+            ResultSet rsKeys = psLect.getGeneratedKeys();
+            if (rsKeys.next()) {
+                idGenerado = rsKeys.getLong(1);
+            }
+            rsKeys.close();
             psLect.close();
             con.close();
 
@@ -135,6 +141,7 @@ public class BaseDeDatos {
             System.out.println("Hubo un error al guardar la lectura de " + idSensor + ": " + e.getMessage());
             e.printStackTrace();
         }
+        return idGenerado;
     }
 
     private static String obtenerUnidad(String nombreSensor) {
@@ -153,32 +160,58 @@ public class BaseDeDatos {
         }
     }
 
-    public static java.util.List<String[]> obtenerUltimasLecturas() {
+    public static java.util.List<String[]> obtenerLecturasPaginadasPorSensor(String sensorId, Integer cursorId, String direction, int pageSize) {
         java.util.List<String[]> lista = new java.util.ArrayList<>();
-        String sql = "SELECT l.id, l.estacion_id, l.sensor_id, l.valor, s.unidad, l.fecha " +
-                     "FROM lectura l " +
-                     "JOIN sensor s ON l.sensor_id = s.id " +
-                     "ORDER BY l.fecha DESC";
+        String sql;
+        if (cursorId == null) {
+            sql = "SELECT id, estacion_id, sensor_id, valor, fecha FROM lectura WHERE sensor_id = ? ORDER BY id DESC LIMIT ?";
+        } else if (direction.equals("next")) {
+            sql = "SELECT id, estacion_id, sensor_id, valor, fecha FROM lectura WHERE sensor_id = ? AND id < ? ORDER BY id DESC LIMIT ?";
+        } else {
+            sql = "SELECT id, estacion_id, sensor_id, valor, fecha FROM lectura WHERE sensor_id = ? AND id > ? ORDER BY id ASC LIMIT ?";
+        }
+
         try {
             Connection con = getConnection();
             PreparedStatement ps = con.prepareStatement(sql);
+            ps.setString(1, sensorId);
+            if (cursorId == null) {
+                ps.setInt(2, pageSize);
+            } else {
+                ps.setInt(2, cursorId);
+                ps.setInt(3, pageSize);
+            }
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
+                long id = rs.getLong("id");
+                String estacionId = rs.getString("estacion_id");
+                String sId = rs.getString("sensor_id");
+                double valor = rs.getDouble("valor");
+                String fecha = rs.getString("fecha");
+
+                String nombreSensor = FormateadorLectura.obtenerNombreSensor(sId, estacionId);
+                String valorConUnidad = FormateadorLectura.obtenerValorConUnidad(valor, sId);
+                String descripcion = FormateadorLectura.obtenerDescripcion(valor, sId);
+
                 lista.add(new String[]{
-                    rs.getString("id"),
-                    rs.getString("estacion_id"),
-                    rs.getString("sensor_id"),
-                    rs.getString("valor"),
-                    rs.getString("unidad"),
-                    rs.getString("fecha")
+                    String.valueOf(id),
+                    fecha,
+                    nombreSensor,
+                    valorConUnidad,
+                    descripcion
                 });
             }
             rs.close();
             ps.close();
             con.close();
+
+            if (cursorId != null && direction.equals("prev")) {
+                java.util.Collections.reverse(lista);
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
         return lista;
     }
+
 }

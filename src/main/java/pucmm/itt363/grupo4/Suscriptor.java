@@ -14,6 +14,21 @@ public class Suscriptor {
         iniciarMqtt();
     }
 
+    @org.springframework.context.annotation.Bean
+    public org.springframework.boot.web.servlet.ServletContextInitializer websocketInitializer() {
+        return servletContext -> {
+            try {
+                jakarta.websocket.server.ServerContainer container =
+                    (jakarta.websocket.server.ServerContainer) servletContext.getAttribute("jakarta.websocket.server.ServerContainer");
+                if (container != null) {
+                    container.addEndpoint(WebSocketServidor.class);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        };
+    }
+
     private static void iniciarMqtt() {
         try {
             String clientId = "grupo4-suscriptor";

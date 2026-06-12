@@ -12,7 +12,7 @@ Para correrlo en VS Code:
 Si quieres correrlo por consola en Windows:
 - Crea una carpeta llamada bin
 - Compilar:
-  javac -encoding UTF-8 -cp "lib/*" -d bin src/main/java/pucmm/itt363/grupo4/*.java
+  javac --release 21 -encoding UTF-8 -cp "lib/*" -d bin src/main/java/pucmm/itt363/grupo4/*.java
 - Ejecutar:
   java -cp "bin;lib/*" pucmm.itt363.grupo4.Suscriptor
 

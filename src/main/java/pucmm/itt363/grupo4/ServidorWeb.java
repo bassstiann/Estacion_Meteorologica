@@ -1,116 +1,193 @@
 package pucmm.itt363.grupo4;
 
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @RestController
 public class ServidorWeb {
 
     @GetMapping("/")
-    public String home() {
-        List<String[]> lecturas = BaseDeDatos.obtenerUltimasLecturas();
-        
-        List<String[]> temperatura = new ArrayList<>();
-        List<String[]> humedad = new ArrayList<>();
-        List<String[]> presion = new ArrayList<>();
-        List<String[]> viento = new ArrayList<>();
-        List<String[]> lluvia = new ArrayList<>();
+    public String home(
+            @RequestParam(value = "sensor", defaultValue = "temperatura") String sensor,
+            @RequestParam(value = "cursor", required = false) Integer cursor,
+            @RequestParam(value = "dir", defaultValue = "next") String dir,
+            @RequestParam(value = "page", defaultValue = "1") int page) {
 
-        for (String[] fila : lecturas) {
-            String sensor = fila[2].toLowerCase();
-            if (sensor.equals("temperatura")) {
-                temperatura.add(fila);
-            } else if (sensor.equals("humedad")) {
-                humedad.add(fila);
-            } else if (sensor.equals("presion")) {
-                presion.add(fila);
-            } else if (sensor.equals("velocidad-viento")) {
-                viento.add(fila);
-            } else if (sensor.equals("lluvia")) {
-                lluvia.add(fila);
-            }
+        String dbSensorId;
+        if (sensor.equals("viento")) {
+            dbSensorId = "velocidad-viento";
+        } else {
+            dbSensorId = sensor;
         }
+
+        int pageSize = 15;
+        List<String[]> lecturas = BaseDeDatos.obtenerLecturasPaginadasPorSensor(dbSensorId, cursor, dir, pageSize + 1);
+
+        boolean tieneSiguiente = false;
+        if (lecturas.size() > pageSize) {
+            tieneSiguiente = true;
+            if (cursor == null || dir.equals("next")) {
+                lecturas.remove(lecturas.size() - 1);
+            } else {
+                lecturas.remove(0);
+            }
+        } else if (cursor != null && dir.equals("prev")) {
+            tieneSiguiente = true;
+        }
+
+        boolean tieneAnterior = (page > 1);
 
         StringBuilder html = new StringBuilder();
         html.append("<!DOCTYPE html>");
         html.append("<html>");
         html.append("<head>");
         html.append("<meta charset='utf-8'>");
-        html.append("<title>Proyecto Estación Meteorológica</title>");
+        html.append("<title>Estación Meteorológica - Grupo 4</title>");
         html.append("<style>");
         html.append("body { font-family: Arial, sans-serif; background-color: #ffffff; color: #000000; padding: 20px; }");
-        html.append("h1 { text-align: center; color: #333333; }");
+        html.append(".top-bar { position: relative; width: 90%; margin: 10px auto 30px auto; }");
+        html.append("h1 { text-align: center; margin: 0; font-size: 28px; color: #000000; }");
+        html.append(".btn { padding: 8px 20px; font-size: 16px; border: 1px solid #000000; background-color: #e0e0e0; cursor: pointer; }");
+        html.append(".btn:hover { background-color: #d0d0d0; }");
+        html.append(".btn:disabled { background-color: #f5f5f5; color: #a0a0a0; border-color: #d0d0d0; cursor: not-allowed; }");
         html.append(".tab-menu { text-align: center; margin-bottom: 20px; }");
-        html.append(".tab-btn { padding: 10px 15px; font-size: 14px; margin: 5px; cursor: pointer; }");
+        html.append(".tab-btn { padding: 10px 20px; font-size: 15px; margin: 5px; cursor: pointer; border: 1px solid #000000; background-color: #ffffff; }");
         html.append(".tab-btn.active { font-weight: bold; background-color: #cccccc; }");
-        html.append(".tab-content { display: none; margin: 0 auto; width: 90%; }");
-        html.append("table { width: 100%; border-collapse: collapse; margin-top: 10px; }");
-        html.append("th, td { border: 1px solid #000000; padding: 8px; text-align: left; }");
-        html.append("th { background-color: #f2f2f2; }");
+        html.append(".divider { border: 1px solid #000000; width: 90%; margin: 15px auto; }");
+        html.append("table { width: 90%; border-collapse: collapse; margin: 20px auto; }");
+        html.append("th, td { border: 1px solid #000000; padding: 10px; text-align: left; font-size: 15px; }");
+        html.append("th { background-color: #e8e8e8; font-weight: bold; }");
+        html.append(".pagination-container { display: flex; justify-content: space-between; align-items: center; width: 90%; margin: 20px auto; }");
+        html.append(".pagination-info { font-size: 16px; }");
         html.append("</style>");
         html.append("</head>");
         html.append("<body>");
+
+        html.append("<div class='top-bar'>");
         html.append("<h1>Estación Meteorológica - Grupo 4</h1>");
-        
-        html.append("<div class='tab-menu'>");
-        html.append("<button class='tab-btn active' onclick=\"verTab(event, 'sec-temperatura')\">Temperatura</button>");
-        html.append("<button class='tab-btn' onclick=\"verTab(event, 'sec-humedad')\">Humedad</button>");
-        html.append("<button class='tab-btn' onclick=\"verTab(event, 'sec-presion')\">Presión</button>");
-        html.append("<button class='tab-btn' onclick=\"verTab(event, 'sec-viento')\">Viento</button>");
-        html.append("<button class='tab-btn' onclick=\"verTab(event, 'sec-lluvia')\">Lluvia</button>");
+        html.append("<button class='btn' onclick='window.location.reload()'>Actualizar</button>");
         html.append("</div>");
 
-        agregarSeccionSensor(html, "temperatura", "Lecturas de Temperatura", temperatura, "°C", true);
-        agregarSeccionSensor(html, "humedad", "Lecturas de Humedad", humedad, "%", false);
-        agregarSeccionSensor(html, "presion", "Lecturas de Presión", presion, "hPa", false);
-        agregarSeccionSensor(html, "viento", "Lecturas de Velocidad del Viento", viento, "km/h", false);
-        agregarSeccionSensor(html, "lluvia", "Lecturas de Lluvia", lluvia, "mm", false);
+        html.append("<div class='tab-menu'>");
+        html.append("<button class='tab-btn ").append(sensor.equals("temperatura") ? "active" : "").append("' onclick='irASensor(\"temperatura\")'>Temperatura</button>");
+        html.append("<button class='tab-btn ").append(sensor.equals("humedad") ? "active" : "").append("' onclick='irASensor(\"humedad\")'>Humedad</button>");
+        html.append("<button class='tab-btn ").append(sensor.equals("presion") ? "active" : "").append("' onclick='irASensor(\"presion\")'>Presión</button>");
+        html.append("<button class='tab-btn ").append(sensor.equals("viento") ? "active" : "").append("' onclick='irASensor(\"viento\")'>Viento</button>");
+        html.append("<button class='tab-btn ").append(sensor.equals("lluvia") ? "active" : "").append("' onclick='irASensor(\"lluvia\")'>Lluvia</button>");
+        html.append("</div>");
+
+        html.append("<hr class='divider'>");
+
+        html.append("<table>");
+        html.append("<thead>");
+        html.append("<tr>");
+        html.append("<th>ID</th>");
+        html.append("<th>Timestamp</th>");
+        html.append("<th>Sensor</th>");
+        html.append("<th>Valor</th>");
+        html.append("<th>Descripción</th>");
+        html.append("</tr>");
+        html.append("</thead>");
+        html.append("<tbody id='tabla-cuerpo'>");
+
+        if (lecturas.isEmpty()) {
+            html.append("<tr id='sin-datos'><td colspan='5' style='text-align: center;'>No hay datos registrados en esta pestaña.</td></tr>");
+        } else {
+            for (String[] fila : lecturas) {
+                html.append("<tr>");
+                html.append("<td>").append(fila[0]).append("</td>");
+                html.append("<td>").append(fila[1]).append("</td>");
+                html.append("<td>").append(fila[2]).append("</td>");
+                html.append("<td>").append(fila[3]).append("</td>");
+                html.append("<td>").append(fila[4]).append("</td>");
+                html.append("</tr>");
+            }
+        }
+
+        html.append("</tbody>");
+        html.append("</table>");
+
+        html.append("<hr class='divider'>");
+
+        html.append("<div class='pagination-container'>");
         
+        String deshabilitadoAnterior = tieneAnterior ? "" : "disabled";
+        html.append("<button class='btn' onclick='irAnterior()' id='btn-anterior' ").append(deshabilitadoAnterior).append(">&lt; Anterior</button>");
+
+        html.append("<div class='pagination-info'>");
+        html.append("Página <span id='pag-actual'><u>").append(page).append("</u></span>");
+        html.append("</div>");
+
+        String deshabilitadoSiguiente = tieneSiguiente ? "" : "disabled";
+        html.append("<button class='btn' onclick='irSiguiente()' id='btn-siguiente' ").append(deshabilitadoSiguiente).append(">Siguiente &gt;</button>");
+        
+        html.append("</div>");
+
         html.append("<script>");
-        html.append("function verTab(evt, nombreTab) {");
-        html.append("    var divs = document.getElementsByClassName('tab-content');");
-        html.append("    for (var i = 0; i < divs.length; i++) {");
-        html.append("        divs[i].style.display = 'none';");
-        html.append("    }");
-        html.append("    var btns = document.getElementsByClassName('tab-btn');");
-        html.append("    for (var i = 0; i < btns.length; i++) {");
-        html.append("        btns[i].classList.remove('active');");
-        html.append("    }");
-        html.append("    document.getElementById(nombreTab).style.display = 'block';");
-        html.append("    evt.currentTarget.classList.add('active');");
+        html.append("var sensorActivo = '").append(sensor).append("';");
+        html.append("var paginaActual = ").append(page).append(";");
+        html.append("var pageSize = ").append(pageSize).append(";");
+
+        html.append("function irASensor(nuevoSensor) {");
+        html.append("    window.location.href = '/?sensor=' + nuevoSensor;");
         html.append("}");
+
+        html.append("function irAnterior() {");
+        html.append("    if (paginaActual > 1) {");
+        html.append("        var tbody = document.getElementById('tabla-cuerpo');");
+        html.append("        if (tbody && tbody.rows.length > 0) {");
+        html.append("            var firstRow = tbody.rows[0];");
+        html.append("            var firstId = firstRow.cells[0].innerText;");
+        html.append("            window.location.href = '/?sensor=' + sensorActivo + '&cursor=' + firstId + '&dir=prev&page=' + (paginaActual - 1);");
+        html.append("        }");
+        html.append("    }");
+        html.append("}");
+
+        html.append("function irSiguiente() {");
+        html.append("    var tbody = document.getElementById('tabla-cuerpo');");
+        html.append("    if (tbody && tbody.rows.length > 0) {");
+        html.append("        var lastRow = tbody.rows[tbody.rows.length - 1];");
+        html.append("        var lastId = lastRow.cells[0].innerText;");
+        html.append("        window.location.href = '/?sensor=' + sensorActivo + '&cursor=' + lastId + '&dir=next&page=' + (paginaActual + 1);");
+        html.append("    }");
+        html.append("}");
+
+        html.append("var socket = new WebSocket('ws://' + window.location.host + '/ws');");
+        html.append("socket.onmessage = function(event) {");
+        html.append("    var data = JSON.parse(event.data);");
+        html.append("    var incomingSensor = data.sensorId === 'velocidad-viento' ? 'viento' : data.sensorId;");
+        
+        html.append("    if (incomingSensor === sensorActivo && paginaActual === 1) {");
+        html.append("        var tbody = document.getElementById('tabla-cuerpo');");
+        html.append("        var sinDatos = document.getElementById('sin-datos');");
+        html.append("        if (sinDatos) {");
+        html.append("            sinDatos.remove();");
+        html.append("        }");
+        html.append("        var row = tbody.insertRow(0);");
+        html.append("        var cId = row.insertCell(0);");
+        html.append("        var cTime = row.insertCell(1);");
+        html.append("        var cSensor = row.insertCell(2);");
+        html.append("        var cValor = row.insertCell(3);");
+        html.append("        var cDesc = row.insertCell(4);");
+        html.append("        cId.innerText = data.id;");
+        html.append("        cTime.innerText = data.fecha;");
+        html.append("        cSensor.innerText = data.nombreSensor;");
+        html.append("        cValor.innerText = data.valorConUnidad;");
+        html.append("        cDesc.innerText = data.descripcion;");
+        html.append("        if (tbody.rows.length > pageSize) {");
+        html.append("            tbody.deleteRow(tbody.rows.length - 1);");
+        html.append("            document.getElementById('btn-siguiente').disabled = false;");
+        html.append("        }");
+        html.append("    }");
+        html.append("};");
         html.append("</script>");
+
         html.append("</body>");
         html.append("</html>");
 
         return html.toString();
-    }
-
-    private void agregarSeccionSensor(StringBuilder html, String id, String titulo, List<String[]> datos, String unidad, boolean activo) {
-        String style = activo ? "block" : "none";
-        html.append("<div id='sec-").append(id).append("' class='tab-content' style='display: ").append(style).append(";'>");
-        html.append("<h2>").append(titulo).append(" (").append(unidad).append(")</h2>");
-        if (datos.isEmpty()) {
-            html.append("<p>No hay datos registrados.</p>");
-        } else {
-            html.append("<table>");
-            html.append("<thead><tr><th>ID</th><th>Estación</th><th>Valor</th><th>Unidad</th><th>Fecha</th></tr></thead>");
-            html.append("<tbody>");
-            for (String[] fila : datos) {
-                html.append("<tr>");
-                html.append("<td>").append(fila[0]).append("</td>");
-                html.append("<td>").append(fila[1]).append("</td>");
-                html.append("<td>").append(fila[3]).append("</td>");
-                html.append("<td>").append(fila[4]).append("</td>");
-                html.append("<td>").append(fila[5]).append("</td>");
-                html.append("</tr>");
-            }
-            html.append("</tbody>");
-            html.append("</table>");
-        }
-        html.append("</div>");
     }
 }
