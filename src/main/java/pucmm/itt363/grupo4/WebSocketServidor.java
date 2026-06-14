@@ -9,6 +9,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
+@org.springframework.stereotype.Component
 @ServerEndpoint("/ws")
 public class WebSocketServidor {
 

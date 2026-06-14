@@ -48,7 +48,7 @@ public class Publicador {
                     }
                 }
 
-                Thread.sleep(10000);
+                Thread.sleep(1000);
             }
 
         } catch (Exception e) {
