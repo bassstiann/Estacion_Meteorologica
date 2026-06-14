@@ -211,7 +211,8 @@ public class ServidorWeb {
         html.append("        .catch(function(err) { console.error(err); });");
         html.append("}");
 
-        html.append("var socket = new WebSocket('ws://' + window.location.host + '/ws');");
+        html.append("var wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';");
+        html.append("var socket = new WebSocket(wsProtocol + window.location.host + '/ws');");
         html.append("socket.onmessage = function(event) {");
         html.append("    var data = JSON.parse(event.data);");
         html.append("    var incomingSensor = data.sensorId === 'velocidad-viento' ? 'viento' : data.sensorId;");
