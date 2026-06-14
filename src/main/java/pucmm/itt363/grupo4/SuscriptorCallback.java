@@ -34,6 +34,7 @@ public class SuscriptorCallback implements MqttCallback {
                 if (id > 0) {
                     JsonObject wsMsg = new JsonObject();
                     wsMsg.addProperty("id", id);
+                    wsMsg.addProperty("sensorId", sensorNombre);
                     wsMsg.addProperty("fecha", fecha);
                     wsMsg.addProperty("nombreSensor", FormateadorLectura.obtenerNombreSensor(sensorNombre, estacionId));
                     wsMsg.addProperty("valorConUnidad", FormateadorLectura.obtenerValorConUnidad(valor, sensorNombre));
